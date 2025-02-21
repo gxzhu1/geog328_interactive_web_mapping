@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="utf-8">
+    <title>Interactive Web Mapping oF Washington Covid Cases</title>
+    <meta name="viewport" content="initial-scale=1,maximum-scale=1,user-scalable=no">
+    <link href="https://api.mapbox.com/mapbox-gl-js/v2.5.0/mapbox-gl.css" rel="stylesheet">
+    <script src="https://api.mapbox.com/mapbox-gl-js/v2.5.0/mapbox-gl.js"></script>
+    <style>
+        h2, h3 {
+            margin: 10px;
+            font-size: 18px;
+        }
+
+        h3 {
+            font-size: 16px;
+        }
+
+        p {
+            margin: 10px;
+        }
+        #map {
+            position: absolute;
+            top: 0;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            width: 100%;
+        }
+        .map-overlay {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            background: rgba(255, 255, 255, 0.8);
+            border-style: solid;
+            border-width: 1px;
+            border-color: rgba(0, 0, 0, 0.2);
+            margin-left: 20px;
+            font-family: Arial, sans-serif;
+            overflow: auto;
+            border-radius: 3px;
+        }
+
+        #features {
+            top: 0;
+            height: 140px;
+            margin-top: 20px;
+            width: 250px;
+        }
+
+        #legend {
+            padding: 10px;
+            box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+            line-height: 18px;
+            height: 210px;
+            margin-bottom: 40px;
+            width: 150px;
+        }
+
+        .legend-key {
+            display: inline-block;
+            border-radius: 20%;
+            width: 10px;
+            height: 10px;
+            margin-right: 5px;
+        }
+
+        .mapboxgl-canvas-container.mapboxgl-interactive,
+        .mapboxgl-ctrl-group button.mapboxgl-ctrl-compass {
+            cursor: unset;
+        }
+    </style>
+</head> 
+
+<body>
+    <div id="map"></div>
+    <div class='map-overlay' id='features'>
+        <h2>Washington Covid Cases Per County</h2>
+        <div id='text-description'>
+            <p>Hover over a state!</p>
+        </div>
+    </div>
+    <div class='map-overlay' id='legend'></div>
+    <script>
+        mapboxgl.accessToken = 'pk.eyJ1IjoiamFrb2J6aGFvIiwiYSI6ImNpcms2YWsyMzAwMmtmbG5icTFxZ3ZkdncifQ.P9MBej1xacybKcDN_jehvw';
+
+        const map = new mapboxgl.Map({
+                container: 'map', // container ID
+                style: 'mapbox://styles/mapbox/light-v10', // style URL
+                zoom: 6.2, // starting zoom
+                center: [-119.74312596613488, 47.28849177494342] // starting center
+            }
+        );
+
+        async function geojsonFetch() { 
+            let response = await fetch('assets/wa-covid-data-102521.geojson');
+            let countyData = await response.json();
+
+            map.on('load', function loadingData() {
+                map.addSource('countyData', {
+                    type: 'geojson',
+                    data: countyData
+                });
+
+                map.addLayer({
+                    'id': 'countyData-layer',
+                    'type': 'fill',
+                    'source': 'countyData',
+                    'paint': {
+                        'fill-color': [
+                            'step',
+                            ['get', 'casePer10k'],
+                            '#ffffd4',   // stop_output_0
+                            456,          // stop_input_0
+                            '#fee391',   // stop_output_1
+                            710,          // stop_input_1
+                            '#fec44f',   // stop_output_2
+                            878,          // stop_input_2 
+                            '#fe9929',   // stop_output_3
+                            1090,         // stop_input_3
+                            '#ec7014',   // stop_output_4
+                            1222,         // stop_input_4
+                            '#cc4c02',   // stop_output_5
+                            1540,         // stop_input_5
+                            '#8c2d04'   // stop_output_6
+                        ],
+                        'fill-outline-color': '#BBBBBB',
+                        'fill-opacity': 0.7,
+                    }
+                });
+            });
+
+            const layers = [
+                '0-455',
+                '456-709',
+                '710-877',
+                '878-1089',
+                '1090-1221',
+                '1222-1539',
+                '1540 and more'
+            ];
+            const colors = [
+                '#ffffd4',
+                '#fee391',
+                '#fec44f',
+                '#fe9929',
+                '#ec7014',
+                '#cc4c02',
+                '#8c2d04'
+            ];
+
+            const legend = document.getElementById('legend');
+            legend.innerHTML = "<b>Covid Cases<br>(Covid Cases Per 10k)</b><br><br>";
+
+            layers.forEach((layer, i) => {
+                const color = colors[i];
+                const item = document.createElement('div');
+                const key = document.createElement('span');
+                key.className = 'legend-key';
+                key.style.backgroundColor = color;
+
+                const value = document.createElement('span');
+                value.innerHTML = `${layer}`;
+                item.appendChild(key);
+                item.appendChild(value);
+                legend.appendChild(item);
+            });
+
+            map.on('mousemove', ({point}) => {
+                const county = map.queryRenderedFeatures(point, {
+                    layers: ['countyData-layer']
+                });
+                document.getElementById('text-description').innerHTML = county.length ?
+                    `<h3>${county[0].properties.name}</h3><p><strong><em>${county[0].properties.casePer10k}</strong> Covid Cases per 10k People</em></p>` :
+                    `<p>Hover over a county!</p>`;
+            });
+        }
+
+        
+
+        geojsonFetch();
+    </script>
+
+</body>
+
+</html>
